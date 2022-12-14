@@ -3,14 +3,61 @@ import numpy as np
 import cv2
 from pathlib import Path
 import argparse
+import math
 
 import utils
 
+def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=5) -> Image.Image:
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
+
+    white = 255
+    centered = max_dotsize // 2
+
+    if img_path: img = Image.open(img_path)
+
+    grayscale_img = img.convert('L')
+    img, grayscale_img = np.array(img), np.array(grayscale_img)
+
+    background_color = utils.parse_color_format(background_color)
+    dot_color = utils.parse_color_format(dot_color)
+
+    dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
+
+    img_center = ( img.shape[0]//2, img.shape[1]//2 )
+    radius = 0
+    angle = 0
+
+    max_radius = int(math.sqrt(img.shape[0]**2 + img.shape[1]**2))
+
+    for angle in range(0, 360, 1):
+        for radius in range(0, max_radius, max_dotsize):
+            radiant = angle * math.pi / 180
+            x_ = int(radius * math.cos(radiant)) + img_center[0]
+            y_ = int(radius * math.sin(radiant)) + img_center[1]
+
+            window_size = int(max_dotsize * radius/max_radius + 2)
+            avg = 0
+
+            for dx in range(-window_size//2, window_size//2, 1):
+                for dy in range(-window_size//2, window_size//2):
+                    if x_+dx >= 0 and x_ + dx < img.shape[0] and y_+dy >= 0 and y_ + dy < img.shape[1]: avg += grayscale_img[x_ + dx][y_ + dy]
+            avg = round(avg / window_size**2)
+
+            dot_radius = max(centered - int(round(avg / white * centered)) - spacing, 0) 
+
+            if dot_color: color = dot_color
+            else: color = np.append(img[min(x_, img.shape[0]-1), min(y_, img.shape[1]-1)], 255).tolist()
+            cv2.circle(dotted_img, (y_, x_), dot_radius, color, -1)
+
+    final_img = Image.fromarray(dotted_img)
+    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
+    elif result_folder: final_img.save(result_folder / f"polar_dot_image_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
+    return final_img
+
+
 # if result_folder == None -> image is not saved
 def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=0) -> Image.Image:
-    if img_path and type(img_path) == str: img_path = Path(img_path)
-    if type(result_folder) == str: result_folder = Path(result_folder)
-    if result_folder and not result_folder.is_dir(): result_folder.mkdir(parents=True, exist_ok=True)
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
     centered = max_dotsize // 2
@@ -49,9 +96,7 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
 # prob around 0.00001
 def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, prob=0.00001, 
                     background_color=255, dot_color=0, num_dots:float=0.1, dot_size=1) -> Image.Image:
-    if img_path and type(img_path) == str: img_path = Path(img_path)
-    if type(result_folder) == str: result_folder = Path(result_folder)
-    if result_folder and not result_folder.is_dir(): result_folder.mkdir(parents=True, exist_ok=True)
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
 
@@ -114,7 +159,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
+    #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
+
+    polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
 
     print('Dot image successfully created!')

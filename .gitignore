@@ -1,2 +1,4 @@
 .DS_Store
 results/*
+*.png
+__pycache__/*

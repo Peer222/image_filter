@@ -1,6 +1,7 @@
 import re
 from typing import List
 from matplotlib import colors
+from pathlib import Path
 
 # parses a color into RGBA-255 format
 def parse_color_format(color) -> List[int]:
@@ -23,3 +24,9 @@ def parse_color_format(color) -> List[int]:
     if len(color) == 3: color.append(255)
     if len(color) != 4 or any(color) < 0 or any(color) > 255: raise Exception(f'parsed color: {color} -> non-matching color format')
     return color
+
+def get_filepaths(folder, img_path):
+    if img_path and type(img_path) == str: img_path = Path(img_path)
+    if type(folder) == str: folder = Path(folder)
+    if folder and not folder.is_dir(): folder.mkdir(parents=True, exist_ok=True)
+    return folder, img_path
