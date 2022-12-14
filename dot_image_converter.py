@@ -7,7 +7,7 @@ import math
 
 import utils
 
-def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=5) -> Image.Image:
+def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None) -> Image.Image:
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
@@ -23,7 +23,7 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
 
     dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
 
-    img_center = ( img.shape[0]//2, img.shape[1]//2 )
+    if not center: center = ( img.shape[0]//2, img.shape[1]//2 )
     radius = 0
     angle = 0
 
@@ -32,8 +32,8 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
     for angle in range(0, 360, 1):
         for radius in range(0, max_radius, max_dotsize):
             radiant = angle * math.pi / 180
-            x_ = int(radius * math.cos(radiant)) + img_center[0]
-            y_ = int(radius * math.sin(radiant)) + img_center[1]
+            x_ = int(radius * math.cos(radiant)) + center[0]
+            y_ = int(radius * math.sin(radiant)) + center[1]
 
             window_size = int(max_dotsize * radius/max_radius + 2)
             avg = 0
