@@ -2,6 +2,7 @@ import re
 from typing import List
 from matplotlib import colors
 from pathlib import Path
+from PIL import Image
 
 # parses a color into RGBA-255 format
 def parse_color_format(color) -> List[int]:
@@ -25,8 +26,17 @@ def parse_color_format(color) -> List[int]:
     if len(color) != 4 or any(color) < 0 or any(color) > 255: raise Exception(f'parsed color: {color} -> non-matching color format')
     return color
 
+def downsample(img:Image.Image, size:int) -> Image.Image:
+    ratio = min(size/img.size[0], size/img.size[1])
+    new_size = (int(img.size[0] * ratio),  int(img.size[1] * ratio))
+    img.thumbnail(new_size)#, resample=Image.Resampling.LANCZOS)
+    return img
+
 def get_filepaths(folder, img_path):
     if img_path and type(img_path) == str: img_path = Path(img_path)
     if type(folder) == str: folder = Path(folder)
     if folder and not folder.is_dir(): folder.mkdir(parents=True, exist_ok=True)
     return folder, img_path
+
+if __name__ == '__main__':
+    pass

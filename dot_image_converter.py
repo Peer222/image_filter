@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 import cv2
 from pathlib import Path
@@ -148,6 +148,19 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
     elif result_folder: final_img.save(result_folder / f"random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
     return final_img
 
+def reversed_random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, prob=0.00001, 
+                    background_color=0, dot_color=255, num_dots:float=0.1, dot_size=1) -> Image.Image:
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
+
+    if img_path: img = Image.open(img_path)
+    img = ImageOps.invert(img)
+
+    img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size)
+
+    if result_folder and img_path: img.save(result_folder / f"{img_path.stem}_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
+    elif result_folder: img.save(result_folder / f"reversed_random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
+    return img
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='dot_image')
 
@@ -160,8 +173,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
-    #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
+    reversed_random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
+    #polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
 
     print('Dot image successfully created!')
