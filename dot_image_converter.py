@@ -10,7 +10,8 @@ import random
 import utils
 
 # recommended dropout: default or ~0.01
-def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None, dropout=1.0) -> Image.Image:
+def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
+                    max_dotsize=15, spacing=7, center=None, dropout=1.0, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -65,13 +66,16 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
 
             if dot_color: color = dot_color
             else: color = np.append(img[x_, y_], 255).tolist()
+
+            if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
             cv2.circle(dotted_img, (y_, x_), dot_radius, color, -1)
 
     return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 
 # if result_folder == None -> image is not saved
-def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=0) -> Image.Image:
+def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=0, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -100,13 +104,16 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
         
             if dot_color: color = dot_color
             else: color = np.append(img[min(x + centered, img.shape[0]-1), min(y + centered, img.shape[1]-1)], 255).tolist()
+
+            if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
             cv2.circle(dotted_img, (y + centered, x + centered), radius, color, -1)
 
     return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 # prob around 0.00001
 def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, prob=0.00001, 
-                    background_color=255, dot_color=0, num_dots:float=0.1, dot_size=1) -> Image.Image:
+                    background_color=255, dot_color=0, num_dots:float=0.1, dot_size=1, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -151,6 +158,8 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
         if dot_color: color = dot_color
         else: color = np.append(img[x, y], 255)
 
+        if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
         if dot_size <= 1: dotted_img[x, y] = color
         else: cv2.circle(dotted_img, (y, x), dot_size//2, color, -1)
 
@@ -161,14 +170,14 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
 
 # color original does not work due to invertion
 def reversed_random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, prob=0.00001, 
-                    background_color=0, dot_color=255, num_dots:float=0.1, dot_size=1) -> Image.Image:
+                    background_color=0, dot_color=255, num_dots:float=0.1, dot_size=1, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
     img = ImageOps.invert(img)
 
-    dotted_img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size)
+    dotted_img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size, random_dot_color=random_dot_color)
 
     return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
@@ -183,11 +192,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
+    raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
-
-    utils.get_metadata('results/contrast_result.png')
+    #polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
 
     print('Dot image successfully created!')

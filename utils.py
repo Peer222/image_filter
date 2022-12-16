@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import numpy as np
+import random
 
 import inspect
 import os
@@ -32,6 +33,24 @@ def parse_color_format(color) -> List[int]:
     if len(color) == 3: color.append(255)
     if len(color) != 4 or any(color) < 0 or any(color) > 255: raise Exception(f'parsed color: {color} -> non-matching color format')
     return color
+
+# base_color None or black results in full random colors -> otherwise random spread of colors around base color 
+def get_random_color(base_color=None, spread:float=1.0) -> List[int]:
+    if base_color: base_color = parse_color_format(base_color)
+    if not base_color or np.sum(base_color[:3]) == 0:
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
+        return [r, g, b, 255]
+
+    spread = int(spread * 256)
+
+    get_random_value = lambda x : random.randint(max(0, x - spread), min(255, x + spread))#max(0, min(random.randint(x - color_spread, x + color_spread), 255))
+
+    r = get_random_value(base_color[0])
+    g = get_random_value(base_color[1])
+    b = get_random_value(base_color[2])
+    return [r, g, b, 255]
 
 def downsample(img:Image.Image, size:int) -> Image.Image:
     ratio = min(size/img.size[0], size/img.size[1])

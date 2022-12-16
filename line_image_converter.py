@@ -12,7 +12,7 @@ import utils
 MAX_IMAGE_SIZE = 2000 
 
 # downsamples images automatically to 2000 as maximum edge size
-def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2) -> Image.Image:
+def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2, line_color='original') -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -30,6 +30,8 @@ def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None,
 
     line_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
 
+    line_color = np.array(utils.parse_color_format(line_color))
+
     for x in tqdm(range(0, img.shape[0], 1)):
         y = 0
         while y <img.shape[1]:
@@ -39,6 +41,8 @@ def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None,
             y_ = min(y + line_window, img.shape[1])
 
             avg = np.mean(img[x:x_, y:y_], (0, 1))
+
+            if line_color.any(): avg = (avg + line_color[:3]) / 2
 
             upper = min(y + centered + line_width//2, img.shape[1] - 1)
             lower = y + centered - line_width//2
@@ -50,7 +54,7 @@ def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None,
     return utils.save_image(result_folder, line_img, img_path, arguments)
 
 
-def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2) -> Image.Image:
+def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2, line_color='original') -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -58,7 +62,7 @@ def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=Non
 
     img = img.rotate(90, expand=True)
 
-    img = vertical_line_image(img=img, background_color=background_color, line_width=line_width, line_window=line_window, space=space)
+    img = vertical_line_image(img=img, background_color=background_color, line_width=line_width, line_window=line_window, space=space, line_color=line_color)
 
     img = img.rotate(-90, expand=True)
 
@@ -66,7 +70,8 @@ def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=Non
 
 
 # image is downsampled automatically
-def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=1, to_right=True) -> Image.Image:
+def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, 
+                        line_width=8, line_window=4, space=1, to_right=True, line_color='original') -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -78,7 +83,7 @@ def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None,
 
     intermediate_size = img.size[0]
 
-    img = vertical_line_image(img=img, background_color=background_color, line_width=line_width, line_window=line_window, space=space)
+    img = vertical_line_image(img=img, background_color=background_color, line_width=line_width, line_window=line_window, space=space, line_color=line_color)
 
     if to_right: img = img.rotate(45, expand=False)
     else: img = img.rotate(-45, expand=False)
@@ -176,4 +181,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='line image converter')
 
     #experimental_line2('results', 'contrast.png', None, (241, 255, 172), (0, 115, 151, 0))
-    diagonal_line_image('results', img_path='contrast.png', line_width=16)
+    #diagonal_line_image('results', img_path='contrast.png', line_width=16)
+    vertical_line_image('results', 'contrast.png', line_color=(112, 166, 255))
