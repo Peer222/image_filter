@@ -5,10 +5,11 @@ from pathlib import Path
 import argparse
 import math
 from timeit import default_timer as timer
+import random
 
 import utils
 
-def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None) -> Image.Image:
+def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None, dropout=0.1) -> Image.Image:
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
@@ -34,6 +35,8 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
 
     for angle in range(0, 360, 1):
         for radius in range(0, max_radius, max_dotsize):
+            if dropout > random.random() * math.sqrt((max_dotsize + radius)/max_radius): continue
+            
             radiant = angle * math.pi / 180
             x_ = int(radius * math.cos(radiant)) + center[0]
             y_ = int(radius * math.sin(radiant)) + center[1]
@@ -51,8 +54,8 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
             cv2.circle(dotted_img, (y_, x_), dot_radius, color, -1)
 
     final_img = Image.fromarray(dotted_img)
-    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
-    elif result_folder: final_img.save(result_folder / f"polar_dot_image_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
+    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{max_dotsize}-{spacing}-{dot_color}-{background_color}-{dropout}.png")
+    elif result_folder: final_img.save(result_folder / f"polar_dot_image_{max_dotsize}-{spacing}-{dot_color}-{background_color}-{dropout}.png")
     return final_img
 
 
@@ -89,8 +92,8 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
 
 
     final_img = Image.fromarray(dotted_img)
-    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
-    elif result_folder: final_img.save(result_folder / f"raster_dot_image_{max_dotsize}-{spacing}-{dot_color}-{background_color}_result.png")
+    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{max_dotsize}-{spacing}-{dot_color}-{background_color}.png")
+    elif result_folder: final_img.save(result_folder / f"raster_dot_image_{max_dotsize}-{spacing}-{dot_color}-{background_color}.png")
     return final_img
 
 # prob around 0.00001
@@ -142,8 +145,8 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
         i += 1
 
     final_img = Image.fromarray(dotted_img)
-    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
-    elif result_folder: final_img.save(result_folder / f"random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
+    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}.png")
+    elif result_folder: final_img.save(result_folder / f"random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}.png")
     return final_img
 
 # color original does not work due to invertion
@@ -156,8 +159,8 @@ def reversed_random_dot_image(result_folder=None, img_path=None, img:Image.Image
 
     img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size)
 
-    if result_folder and img_path: img.save(result_folder / f"{img_path.stem}_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
-    elif result_folder: img.save(result_folder / f"reversed_random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}_result.png")
+    if result_folder and img_path: img.save(result_folder / f"{img_path.stem}_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}.png")
+    elif result_folder: img.save(result_folder / f"reversed_random_dot_image_{prob}-{num_dots}-{dot_size}-{dot_color}-{background_color}.png")
     return img
 
 if __name__ == '__main__':
