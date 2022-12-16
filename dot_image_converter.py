@@ -11,12 +11,14 @@ import utils
 
 # recommended dropout: default or ~0.01
 def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
-                    max_dotsize=15, spacing=7, center=None, dropout=1.0, random_dot_color=0.0) -> Image.Image:
+                    max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
     centered = max_dotsize // 2
+    dropout = 1 - dropout
+    if dropout == 0: dropout += 10e-17
 
     if img_path: img = Image.open(img_path)
 
@@ -60,7 +62,7 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
             d = polar_distance(radius, angle, last_angle)
             d_first = polar_distance(radius, angle, first_angle)
 
-            threshold = np.random.geometric(p=dropout)
+            threshold = np.random.geometric(p=dropout) - 1
             if d < threshold or d_first < threshold: continue
             last_angle = angle
 
@@ -192,9 +194,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
+    #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    #polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
+    polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, random_dot_color=0.3)
 
     print('Dot image successfully created!')
