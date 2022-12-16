@@ -1,10 +1,17 @@
 import re
-from typing import List
+from typing import List, Dict
 from matplotlib import colors
 from pathlib import Path
 from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+import numpy as np
+
+import inspect
+import os
+from datetime import datetime
 
 # parses a color into RGBA-255 format
+# TODO hex colors
 def parse_color_format(color) -> List[int]:
     if type(color) == int or type(color) == float or type(color) == str: color = [color]
     color = list(color)
@@ -37,6 +44,47 @@ def get_filepaths(folder, img_path):
     if type(folder) == str: folder = Path(folder)
     if folder and not folder.is_dir(): folder.mkdir(parents=True, exist_ok=True)
     return folder, img_path
+
+# adds options to saved image metadata
+def save_image(result_folder:Path, img:np.array or Image.Image, img_name:str or Path, options:Dict) -> Image.Image:
+    if type(img) != Image.Image: img = Image.fromarray(img)
+
+    caller = inspect.stack()[1].function # gets name of caller function
+    if not img_name: img_name = caller
+
+    if type(img_name) == type(Path('.')): img_name = img_name.stem
+
+    if not result_folder: return img
+
+    # create image metadata
+    metadata = PngInfo()
+    metadata.add_text('reference', 'https://github.com/Peer222/image_filter')
+    metadata.add_text('timestamp', datetime.now().strftime("%Y-%m-%d_%H-%M"))
+    metadata.add_text('filter', caller)
+    for key in options.keys():
+        if key in ['result_folder', 'img_path', 'img']: continue
+        metadata.add_text(key, str(options[key]))
+
+    filename = f'{img_name}_result'
+    suffix = '.png'
+    if os.path.isfile(result_folder / f'{filename}{suffix}'):
+        counter = 2
+        while os.path.isfile(result_folder / f'{filename}_{counter}{suffix}'):
+            counter += 1
+        filename += f'_{counter}'
+    img.save(result_folder / (filename + suffix), pnginfo=metadata)
+
+    return img
+
+def get_metadata(img_path:Path or str=None, img:Image.Image=None) -> Dict:
+    if img_path: img = Image.open(img_path)
+    data = img.text#info['meta_to_read']
+    print('\nFilename: ', img.filename)
+    print('\nMetadata: ')
+    for key in data.keys():
+        print(f'    {key}: ', data[key])
+    print('')
+    return data
 
 if __name__ == '__main__':
     pass

@@ -13,6 +13,7 @@ MAX_IMAGE_SIZE = 2000
 
 # downsamples images automatically to 2000 as maximum edge size
 def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2) -> Image.Image:
+    arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
@@ -46,12 +47,11 @@ def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None,
 
             y += line_width + space
 
-    final_img = Image.fromarray(line_img)
-    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{line_window}-{line_width}-{space}.png")
-    elif result_folder: final_img.save(result_folder / f"vertical_line_image_{line_window}-{line_width}-{space}.png")
-    return final_img
+    return utils.save_image(result_folder, img, img_path, arguments)
+
 
 def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2) -> Image.Image:
+    arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
@@ -62,12 +62,12 @@ def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=Non
 
     img = img.rotate(-90, expand=True)
 
-    if result_folder and img_path: img.save(result_folder / f"{img_path.stem}_{line_window}-{line_width}-{space}.png")
-    elif result_folder: img.save(result_folder / f"horizontal_line_image_{line_window}-{line_width}-{space}.png")
-    return img
+    return utils.save_image(result_folder, img, img_path, arguments)
+
 
 # image is downsampled automatically
 def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=1, to_right=True) -> Image.Image:
+    arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
@@ -88,12 +88,11 @@ def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None,
     left, top, right, bottom = scale(x_offset), scale(y_offset), scale(x_offset + original_shape[0]), scale(y_offset + original_shape[1])
     img = img.crop((left, top, right, bottom))
 
-    if result_folder and img_path: img.save(result_folder / f"{img_path.stem}_{line_window}-{line_width}-{space}-{to_right}.png")
-    elif result_folder: img.save(result_folder / f"diagonal_line_image_{line_window}-{line_width}-{space}-{to_right}.png")
-    return img
+    return utils.save_image(result_folder, img, img_path, arguments)
 
 
 def experimental_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_color=0, line_width=4, line_window=8, space=8) -> Image.Image:
+    arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
@@ -130,13 +129,11 @@ def experimental_line_image(result_folder=None, img_path=None, img:Image.Image=N
 
             y += line_width
 
-    final_img = Image.fromarray(line_img)
-    if result_folder and img_path: final_img.save(result_folder / f"{img_path.stem}_{line_window}-{line_width}-{space}.png")
-    elif result_folder: final_img.save(result_folder / f"experimental_line_image_{line_window}-{line_width}-{space}.png")
-    return final_img
+    return utils.save_image(result_folder, img, img_path, arguments)
 
 
 def experimental_line2(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_color=0, line_width=4, line_window=8, space=8) -> Image.Image:
+    arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     white = 255
@@ -172,10 +169,8 @@ def experimental_line2(result_folder=None, img_path=None, img:Image.Image=None, 
 
             y += line_width
 
-    final_img = Image.fromarray(line_img)
-    if result_folder and img_path: final_img.save(result_folder / f"test_{img_path.stem}_{line_window}-{line_width}-{space}.png")
-    elif result_folder: final_img.save(result_folder / f"horizontal_line_image_{line_window}-{line_width}-{space}.png")
-    return final_img
+    return utils.save_image(result_folder, img, img_path, arguments)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='line image converter')
