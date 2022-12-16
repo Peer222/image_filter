@@ -9,7 +9,8 @@ import random
 
 import utils
 
-def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None, dropout=0.1) -> Image.Image:
+# recommended dropout: default or ~0.01
+def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, max_dotsize=15, spacing=7, center=None, dropout=1.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -27,18 +28,22 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
     dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
 
     if not center: center = ( img.shape[0]//2, img.shape[1]//2 )
-    radius = 0
-    angle = 0
 
     max_radius = int(math.sqrt(img.shape[0]**2 + img.shape[1]**2))
 
     window_size = max_dotsize//2
 
-    for angle in range(0, 360, 1):
-        for radius in range(0, max_radius, max_dotsize):
-            #if dropout > random.random() * math.sqrt((max_dotsize + radius)/max_radius): continue # removes points from center more likely
-            
+    def polar_distance(radius, angle1, angle2):
+        if angle2 == None or angle1 == angle2: return math.inf #prevent false positives
+        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
+        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
+
+    for radius in range(0, max_radius, max_dotsize):
+        last_angle = None
+        first_angle = random.randint(0, 360)
+        for angle in range(first_angle, first_angle + 360, 1):
             radiant = angle * math.pi / 180
+
             x_ = int(radius * math.cos(radiant)) + center[0]
             y_ = int(radius * math.sin(radiant)) + center[1]
 
@@ -49,7 +54,14 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
             avg = np.mean(grayscale_img[dx1:dx2, dy1:dy2], (0, 1))
 
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
-            if dropout > random.random() * math.sqrt(radius/max_radius): dot_radius = int(dot_radius / (1.4 + random.random())) # reduces points from center more likely
+
+            # dropout
+            d = polar_distance(radius, angle, last_angle)
+            d_first = polar_distance(radius, angle, first_angle)
+
+            threshold = np.random.geometric(p=dropout)
+            if d < threshold or d_first < threshold: continue
+            last_angle = angle
 
             if dot_color: color = dot_color
             else: color = np.append(img[x_, y_], 255).tolist()
@@ -90,7 +102,7 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
             else: color = np.append(img[min(x + centered, img.shape[0]-1), min(y + centered, img.shape[1]-1)], 255).tolist()
             cv2.circle(dotted_img, (y + centered, x + centered), radius, color, -1)
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 # prob around 0.00001
 def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, prob=0.00001, 
@@ -135,13 +147,16 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
         if pos >= len(values): continue
 
         x, y, _ = values[pos]
-        #cv2.circle(dotted_img, (y, x), dot_size, dot_color, -1)
-        if dot_color: dotted_img[x, y] = dot_color
-        else: dotted_img[x, y] = np.append(img[x, y], 255)
+
+        if dot_color: color = dot_color
+        else: color = np.append(img[x, y], 255)
+
+        if dot_size <= 1: dotted_img[x, y] = color
+        else: cv2.circle(dotted_img, (y, x), dot_size//2, color, -1)
 
         i += 1
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 
 # color original does not work due to invertion
@@ -153,9 +168,9 @@ def reversed_random_dot_image(result_folder=None, img_path=None, img:Image.Image
     if img_path: img = Image.open(img_path)
     img = ImageOps.invert(img)
 
-    img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size)
+    dotted_img = random_dot_image(img=img, prob=prob, background_color=background_color, dot_color=dot_color, num_dots=num_dots, dot_size=dot_size)
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='dot_image')

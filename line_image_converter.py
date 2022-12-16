@@ -47,7 +47,7 @@ def vertical_line_image(result_folder=None, img_path=None, img:Image.Image=None,
 
             y += line_width + space
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, line_img, img_path, arguments)
 
 
 def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_width=8, line_window=4, space=2) -> Image.Image:
@@ -129,7 +129,7 @@ def experimental_line_image(result_folder=None, img_path=None, img:Image.Image=N
 
             y += line_width
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, line_img, img_path, arguments)
 
 
 def experimental_line2(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, line_color=0, line_width=4, line_window=8, space=8) -> Image.Image:
@@ -169,7 +169,7 @@ def experimental_line2(result_folder=None, img_path=None, img:Image.Image=None, 
 
             y += line_width
 
-    return utils.save_image(result_folder, img, img_path, arguments)
+    return utils.save_image(result_folder, line_img, img_path, arguments)
 
 
 if __name__ == '__main__':
