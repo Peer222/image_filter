@@ -71,25 +71,23 @@ def horizontal_line_image(result_folder=None, img_path=None, img:Image.Image=Non
 
 # image is downsampled automatically
 def diagonal_line_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, 
-                        line_width=8, line_window=4, space=1, to_right=True, line_color='original') -> Image.Image:
+                        line_width=8, line_window=4, space=0, angle=235, line_color='original') -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
     original_shape = img.size
 
-    if to_right: img = img.rotate(-45, expand=True)
-    else: img.rotate(45, expand=True)
+    img = img.rotate(angle, expand=True)
 
-    intermediate_size = img.size[0]
+    intermediate_shape = img.size
 
     img = vertical_line_image(img=img, background_color=background_color, line_width=line_width, line_window=line_window, space=space, line_color=line_color)
 
-    if to_right: img = img.rotate(45, expand=False)
-    else: img = img.rotate(-45, expand=False)
+    img = img.rotate(-angle, expand=False)
 
-    x_offset, y_offset = (intermediate_size - original_shape[0]) // 2, (intermediate_size - original_shape[1]) // 2
-    scale = lambda x : int( x * img.size[0] / intermediate_size)
+    x_offset, y_offset = (intermediate_shape[0] - original_shape[0]) // 2, (intermediate_shape[1] - original_shape[1]) // 2
+    scale = lambda x : int( x * img.size[0] / intermediate_shape[0])
     left, top, right, bottom = scale(x_offset), scale(y_offset), scale(x_offset + original_shape[0]), scale(y_offset + original_shape[1])
     img = img.crop((left, top, right, bottom))
 
@@ -181,5 +179,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='line image converter')
 
     #experimental_line2('results', 'contrast.png', None, (241, 255, 172), (0, 115, 151, 0))
-    #diagonal_line_image('results', img_path='contrast.png', line_width=16)
-    vertical_line_image('results', 'contrast.png', line_color=(112, 166, 255))
+    diagonal_line_image('results', img_path='contrast.png', line_width=16)
+    #vertical_line_image('results', 'contrast.png', line_color=(112, 166, 255))
