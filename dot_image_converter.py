@@ -4,13 +4,13 @@ import cv2
 from pathlib import Path
 import argparse
 import math
-from timeit import default_timer as timer
 import random
+from tqdm.auto import tqdm
 
 import utils
 
-def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image=None, function=lambda c: (c[0], c[1]), background_color=255, dot_color=0, 
-                    max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
+def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image=None, function=lambda c: (c[1], c[0]), dot_distance=15, background_color=255, dot_color=0, 
+                    max_dotsize=15, spacing=7, dropout=0.0, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -26,17 +26,20 @@ def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image
 
     white = 255
     centered = max_dotsize // 2
-    dropout = 1 - dropout
-    if dropout == 0: dropout += 10e-17
 
-    for x in range(0, grayscale_img.shape[0], 1):
+    for x in tqdm(range(0, grayscale_img.shape[0], 1)):
+        last_coordinates = (-1, -1)
 
         for y in range(0, grayscale_img.shape[1], 1):
 
             x_transformed, y_transformed = function((x, y))
+            x_transformed, y_transformed = int(x_transformed), int(y_transformed)
+            if x_transformed >= grayscale_img.shape[0] or y_transformed >= grayscale_img.shape[1]: continue
+            if utils.euclidean_distance((x_transformed, y_transformed), last_coordinates) < dot_distance: continue
+            last_coordinates = (x_transformed, y_transformed)
 
-            x_ = min(x + max_dotsize, grayscale_img.shape[0])
-            y_ = min(y + max_dotsize, grayscale_img.shape[1])
+            x_ = min(x_transformed + max_dotsize, grayscale_img.shape[0])
+            y_ = min(y_transformed + max_dotsize, grayscale_img.shape[1])
             avg = np.mean(grayscale_img[x_transformed:x_, y_transformed:y_], (0, 1))
 
             radius = max(centered - round(avg / white * centered) - spacing, 0)
@@ -292,7 +295,8 @@ if __name__ == '__main__':
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.3)
+    #gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.3)
+    custom_function_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL)
 
     #utils.get_metadata('results/contrast_result_77.png')
 

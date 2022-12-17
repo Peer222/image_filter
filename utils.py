@@ -12,14 +12,22 @@ import inspect
 import os
 from datetime import datetime
 
-def polar_distance(radius, angle1, angle2):
-        if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
-        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
-        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
+def polar_distance(radius, angle1, angle2) -> float:
+    if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
+    radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
+    return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
+
+def euclidean_distance(c1, c2) -> float:
+    if any([c1[0],c1[1],c2[0], c2[1]]) < 0: return math.inf
+    return math.sqrt( (c1[0]-c2[0])**2 + (c1[1]-c2[1])**2 )
 
 class DropoutType():
     NORMAL = 0
     BRIGHTNESS = 1
+
+class Direction():
+    HORIZONTAL = 0
+    VERTICAL = 1
 
 def dropout(d, d_first, value, dropout_p, dropout_type, max_dotsize) -> bool:
     dropout_p = 1 - dropout_p
