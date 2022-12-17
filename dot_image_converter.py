@@ -35,13 +35,13 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
     angles = max(img.shape[0] - center[0], img.shape[0] - center[1]) // max_dotsize
 
     def polar_distance(radius, angle1, angle2):
-        if angle2 == None or angle1 == angle2: return math.inf #prevent false positives
+        if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
         radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
         return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
 
     
     for radius in range(0, max_radius, max_dotsize):
-        #last_angle = None
+        last_angle = -1
         first_angle = random.randint(0, angles * 360)
 
         angle_step = 1
@@ -64,12 +64,12 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
 
             # dropout
-            #d = polar_distance(radius, angle, last_angle)
-            #d_first = polar_distance(radius, angle, first_angle)
+            d = polar_distance(radius, angle/angles, last_angle/angles)
+            d_first = polar_distance(radius, angle/angles, first_angle/angles)
 
-            #threshold = np.random.geometric(p=dropout) - 1
-            #if d < threshold or d_first < threshold: continue
-            #last_angle = angle
+            threshold = np.random.geometric(p=dropout) - 1
+            if d < threshold or d_first < threshold: continue
+            last_angle = angle
 
             if dot_color: color = dot_color
             else: color = np.append(img[x_, y_], 255).tolist()
@@ -268,6 +268,8 @@ if __name__ == '__main__':
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)#, dropout=0.99, random_dot_color=0.3)
+    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, random_dot_color=0.3)
+
+    #utils.get_metadata('results/contrast_result_77.png')
 
     print('Dot image successfully created!')
