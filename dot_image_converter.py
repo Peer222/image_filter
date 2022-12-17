@@ -9,7 +9,78 @@ import random
 
 import utils
 
-# recommended dropout: default or ~0.01
+def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
+                    max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
+    arguments = locals().copy()
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
+
+    if img_path: img = Image.open(img_path)
+
+    grayscale_img = img.convert('L')
+    img, grayscale_img = np.array(img), np.array(grayscale_img)
+
+    background_color = utils.parse_color_format(background_color)
+    dot_color = utils.parse_color_format(dot_color)
+
+    dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
+
+    white = 255
+    centered = max_dotsize // 2
+    dropout = 1 - dropout
+    if dropout == 0: dropout += 10e-17
+
+    if not center: center = ( img.shape[0]//2, img.shape[1]//2 )
+    max_radius = int(math.sqrt(img.shape[0]**2 + img.shape[1]**2))
+    window_size = max_dotsize//2
+    angles = max(img.shape[0] - center[0], img.shape[0] - center[1]) // max_dotsize
+
+    def polar_distance(radius, angle1, angle2):
+        if angle2 == None or angle1 == angle2: return math.inf #prevent false positives
+        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
+        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
+
+    
+    for radius in range(0, max_radius, max_dotsize):
+        #last_angle = None
+        first_angle = random.randint(0, angles * 360)
+
+        angle_step = 1
+
+        while angle_step < 180 * angles and polar_distance(radius, 0, angle_step/angles) < max_dotsize and radius != 0:
+            angle_step += 1
+
+        for angle in range(first_angle, first_angle + angles * 360, angle_step):
+            radiant = angle * math.pi / 180 / angles
+            
+            x_ = int(radius * math.cos(radiant)) + center[0]
+            y_ = int(radius * math.sin(radiant)) + center[1]
+
+            if not( 0 <= x_ < img.shape[0] and 0 <= y_ < img.shape[1] ): continue
+
+            dx1, dx2 = max(x_ - window_size, 0), min(x_ + window_size, img.shape[0])
+            dy1, dy2 = max(y_ - window_size, 0), min(y_ + window_size, img.shape[1])
+            avg = np.mean(grayscale_img[dx1:dx2, dy1:dy2], (0, 1))
+
+            dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
+
+            # dropout
+            #d = polar_distance(radius, angle, last_angle)
+            #d_first = polar_distance(radius, angle, first_angle)
+
+            #threshold = np.random.geometric(p=dropout) - 1
+            #if d < threshold or d_first < threshold: continue
+            #last_angle = angle
+
+            if dot_color: color = dot_color
+            else: color = np.append(img[x_, y_], 255).tolist()
+
+            if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
+            cv2.circle(dotted_img, (y_, x_), dot_radius, color, -1)
+
+    return utils.save_image(result_folder, dotted_img, img_path, arguments)
+
+# recommended dropout: default or ~0.99
 def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
                     max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
@@ -197,6 +268,6 @@ if __name__ == '__main__':
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, random_dot_color=0.3)
+    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)#, dropout=0.99, random_dot_color=0.3)
 
     print('Dot image successfully created!')
