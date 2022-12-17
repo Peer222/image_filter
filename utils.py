@@ -11,6 +11,10 @@ import inspect
 import os
 from datetime import datetime
 
+class DropoutType():
+    NORMAL = 0
+    BRIGHTNESS = 1
+
 # parses a color into RGBA-255 format
 # TODO hex colors
 def parse_color_format(color) -> List[int]:

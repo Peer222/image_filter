@@ -9,8 +9,48 @@ import random
 
 import utils
 
-def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
+def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image=None, function=lambda c: (c[0], c[1]), background_color=255, dot_color=0, 
                     max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
+    arguments = locals().copy()
+    result_folder, img_path = utils.get_filepaths(result_folder, img_path)
+
+    if img_path: img = Image.open(img_path)
+
+    grayscale_img = img.convert('L')
+    img, grayscale_img = np.array(img), np.array(grayscale_img)
+
+    background_color = utils.parse_color_format(background_color)
+    dot_color = utils.parse_color_format(dot_color)
+
+    dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
+
+    white = 255
+    centered = max_dotsize // 2
+    dropout = 1 - dropout
+    if dropout == 0: dropout += 10e-17
+
+    for x in range(0, grayscale_img.shape[0], max_dotsize):
+
+        for y in range(0, grayscale_img.shape[1], max_dotsize):
+
+            x_ = min(x + max_dotsize, grayscale_img.shape[0])
+            y_ = min(y + max_dotsize, grayscale_img.shape[1])
+            avg = np.mean(grayscale_img[x:x_, y:y_], (0, 1))
+
+            radius = max(centered - round(avg / white * centered) - spacing, 0)
+        
+            if dot_color: color = dot_color
+            else: color = np.append(img[min(x + centered, img.shape[0]-1), min(y + centered, img.shape[1]-1)], 255).tolist()
+
+            if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
+            cv2.circle(dotted_img, (y + centered, x + centered), radius, color, -1)
+
+    return utils.save_image(result_folder, dotted_img, img_path, arguments)
+
+# recommended dropout: default or ~0.99
+def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
+                    max_dotsize=15, spacing=7, center=None, dropout=0.0, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -63,11 +103,14 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
 
             # dropout
-            d = polar_distance(radius, angle, last_angle)
-            d_first = polar_distance(radius, angle, angle_offset)
+            avg_weighting = (max_dotsize / 2)**2
+            if dropout_type == utils.DropoutType.BRIGHTNESS: weighting =  (max_dotsize * (white-avg) / white)**2
+            elif dropout_type == utils.DropoutType.NORMAL: weighting =avg_weighting   # no affect from color darkness
+            d = polar_distance(radius, angle, last_angle) + weighting
+            d_first = polar_distance(radius, angle, angle_offset) + weighting
 
             threshold = np.random.geometric(p=dropout) - 1
-            if d < threshold or d_first < threshold: continue
+            if d < threshold + avg_weighting or d_first < threshold  + avg_weighting: continue
             last_angle = angle
 
             if dot_color: color = dot_color
@@ -81,7 +124,7 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
 
 # recommended dropout: default or ~0.99
 def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, background_color=255, dot_color=0, 
-                    max_dotsize=15, spacing=7, center=None, dropout=0.0, random_dot_color=0.0) -> Image.Image:
+                    max_dotsize=15, spacing=7, center=None, dropout=0.0, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
@@ -129,11 +172,15 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
 
             # dropout
-            d = polar_distance(radius, angle, last_angle)
-            d_first = polar_distance(radius, angle, first_angle)
+            avg_weighting = (max_dotsize / 2)**2
+            if dropout_type == utils.DropoutType.BRIGHTNESS: weighting =  (max_dotsize * (white-avg) / white)**2
+            elif dropout_type == utils.DropoutType.NORMAL: weighting =avg_weighting   # no affect from color darkness
+
+            d = polar_distance(radius, angle, last_angle) + weighting
+            d_first = polar_distance(radius, angle, first_angle) + weighting
 
             threshold = np.random.geometric(p=dropout) - 1
-            if d < threshold or d_first < threshold: continue
+            if d < threshold + avg_weighting or d_first < threshold + avg_weighting: continue
             last_angle = angle
 
             if dot_color: color = dot_color
@@ -267,7 +314,7 @@ if __name__ == '__main__':
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
-    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)#, dropout=0.99, random_dot_color=0.3)
+    gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.3)
 
     #utils.get_metadata('results/contrast_result_77.png')
 
