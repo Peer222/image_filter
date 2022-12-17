@@ -5,15 +5,35 @@ from pathlib import Path
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import numpy as np
+import math
 import random
 
 import inspect
 import os
 from datetime import datetime
 
+def polar_distance(radius, angle1, angle2):
+        if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
+        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
+        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
+
 class DropoutType():
     NORMAL = 0
     BRIGHTNESS = 1
+
+def dropout(d, d_first, value, dropout_p, dropout_type, max_dotsize) -> bool:
+    dropout_p = 1 - dropout_p
+    if dropout_p == 0: dropout_p += 10e-17
+
+    avg_weighting = (max_dotsize / 2)**2
+    if dropout_type == DropoutType.BRIGHTNESS: weighting =  (max_dotsize * (255-value) / 255)**2
+    elif dropout_type == DropoutType.NORMAL: weighting = avg_weighting   # no affect from color darkness
+
+    d += weighting
+    d_first += weighting
+
+    threshold = np.random.geometric(p=dropout_p) - 1
+    return d < threshold + avg_weighting or d_first < threshold  + avg_weighting
 
 # parses a color into RGBA-255 format
 # TODO hex colors

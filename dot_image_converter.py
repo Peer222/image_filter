@@ -29,22 +29,24 @@ def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image
     dropout = 1 - dropout
     if dropout == 0: dropout += 10e-17
 
-    for x in range(0, grayscale_img.shape[0], max_dotsize):
+    for x in range(0, grayscale_img.shape[0], 1):
 
-        for y in range(0, grayscale_img.shape[1], max_dotsize):
+        for y in range(0, grayscale_img.shape[1], 1):
+
+            x_transformed, y_transformed = function((x, y))
 
             x_ = min(x + max_dotsize, grayscale_img.shape[0])
             y_ = min(y + max_dotsize, grayscale_img.shape[1])
-            avg = np.mean(grayscale_img[x:x_, y:y_], (0, 1))
+            avg = np.mean(grayscale_img[x_transformed:x_, y_transformed:y_], (0, 1))
 
             radius = max(centered - round(avg / white * centered) - spacing, 0)
         
             if dot_color: color = dot_color
-            else: color = np.append(img[min(x + centered, img.shape[0]-1), min(y + centered, img.shape[1]-1)], 255).tolist()
+            else: color = np.append(img[min(x_transformed + centered, img.shape[0]-1), min(y_transformed + centered, img.shape[1]-1)], 255).tolist()
 
             if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
 
-            cv2.circle(dotted_img, (y + centered, x + centered), radius, color, -1)
+            cv2.circle(dotted_img, (y_transformed + centered, x_transformed + centered), radius, color, -1)
 
     return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
@@ -66,18 +68,10 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
 
     white = 255
     centered = max_dotsize // 2
-    dropout = 1 - dropout
-    if dropout == 0: dropout += 10e-17
 
     if not center: center = ( img.shape[0]//2, img.shape[1]//2 )
     max_radius = int(math.sqrt(img.shape[0]**2 + img.shape[1]**2))
     window_size = max_dotsize//2
-
-    def polar_distance(radius, angle1, angle2):
-        if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
-        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
-        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
-
     
     for radius in range(0, max_radius, max_dotsize):
         last_angle = -1
@@ -102,15 +96,10 @@ def gap_aware_polar_dot_image(result_folder=None, img_path=None, img:Image.Image
 
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
 
-            # dropout
-            avg_weighting = (max_dotsize / 2)**2
-            if dropout_type == utils.DropoutType.BRIGHTNESS: weighting =  (max_dotsize * (white-avg) / white)**2
-            elif dropout_type == utils.DropoutType.NORMAL: weighting =avg_weighting   # no affect from color darkness
-            d = polar_distance(radius, angle, last_angle) + weighting
-            d_first = polar_distance(radius, angle, angle_offset) + weighting
+            d = utils.polar_distance(radius, angle, last_angle)
+            d_first = utils.polar_distance(radius, angle, angle_offset)
 
-            threshold = np.random.geometric(p=dropout) - 1
-            if d < threshold + avg_weighting or d_first < threshold  + avg_weighting: continue
+            if utils.dropout(d, d_first, avg, dropout, dropout_type, max_dotsize): continue
             last_angle = angle
 
             if dot_color: color = dot_color
@@ -149,11 +138,6 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
 
     window_size = max_dotsize//2
 
-    def polar_distance(radius, angle1, angle2):
-        if angle2 == None or angle1 == angle2: return math.inf #prevent false positives
-        radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
-        return math.sqrt( 2 * radius**2 - 2 * radius**2 * math.cos( radiant1 - radiant2) )
-
     for radius in range(0, max_radius, max_dotsize):
         last_angle = None
         first_angle = random.randint(0, 360)
@@ -171,16 +155,10 @@ def polar_dot_image(result_folder=None, img_path=None, img:Image.Image=None, bac
 
             dot_radius = max(centered - round(avg / white * centered) - spacing, 0) 
 
-            # dropout
-            avg_weighting = (max_dotsize / 2)**2
-            if dropout_type == utils.DropoutType.BRIGHTNESS: weighting =  (max_dotsize * (white-avg) / white)**2
-            elif dropout_type == utils.DropoutType.NORMAL: weighting =avg_weighting   # no affect from color darkness
+            d = utils.polar_distance(radius, angle, last_angle)
+            d_first = utils.polar_distance(radius, angle, first_angle)
 
-            d = polar_distance(radius, angle, last_angle) + weighting
-            d_first = polar_distance(radius, angle, first_angle) + weighting
-
-            threshold = np.random.geometric(p=dropout) - 1
-            if d < threshold + avg_weighting or d_first < threshold + avg_weighting: continue
+            if utils.dropout(d, d_first, avg, dropout, dropout_type, max_dotsize): continue
             last_angle = angle
 
             if dot_color: color = dot_color
