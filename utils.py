@@ -12,6 +12,8 @@ import inspect
 import os
 from datetime import datetime
 
+import cv2
+
 def polar_distance(radius, angle1, angle2) -> float:
     if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
     radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
@@ -112,6 +114,7 @@ def save_image(result_folder:Path, img:np.array or Image.Image, img_name:str or 
     metadata.add_text('reference', 'https://github.com/Peer222/image_filter')
     metadata.add_text('timestamp', datetime.now().strftime("%Y-%m-%d_%H-%M"))
     metadata.add_text('filter', caller)
+    metadata.add_text('shape', str(img.size))
     for key in options.keys():
         if key in ['result_folder', 'img_path', 'img']: continue
         metadata.add_text(key, str(options[key]))
@@ -133,9 +136,38 @@ def get_metadata(img_path:Path or str=None, img:Image.Image=None) -> Dict:
     print('\nFilename: ', img.filename)
     print('\nMetadata: ')
     for key in data.keys():
+        print(type(data[key]))
         print(f'    {key}: ', data[key])
     print('')
     return data
+
+class PrintableLambda( object ):
+    def __init__( self, body ):
+        self.body= body
+    def __call__( self ):
+        return eval( self.body )
+    def __str__( self ):
+        return self.body
+
+def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=None, result_folder:Path or str='video_results', video_name:str=None, fps=25) -> None:
+    if type(source_folder) == str: source_folder = Path(source_folder)
+    if type(result_folder) == str: result_folder = Path(result_folder)
+    if not result_folder.is_dir():
+        result_folder.mkdir(parents=True, exist_ok=True)
+    
+    if not image_paths: image_paths = source_folder.glob('*.png')
+
+    frame = cv2.imread(image_paths[0])
+    height, width, layers = frame.shape
+
+    video = cv2.VideoWriter(video_name, 0, fps, (width,height))
+
+    for img_path in image_paths:
+        video.write(cv2.imread(img_path))
+
+    cv2.destroyAllWindows()
+    video.release()
+
 
 if __name__ == '__main__':
     pass

@@ -1,4 +1,5 @@
 from PIL import Image, ImageOps
+from typing import Tuple
 import numpy as np
 import cv2
 from pathlib import Path
@@ -9,9 +10,16 @@ from tqdm.auto import tqdm
 
 import utils
 
-def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image=None, function=lambda c: (c[1], c[0]), dot_distance=15, background_color=255, dot_color=0, 
-                    max_dotsize=15, spacing=7, dropout=0.0, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.0) -> Image.Image:
+# lambda c: (c[0] + 20 * math.sin(c[1]), c[1] + 20 * math.cos(c[0]))
+# lambda c: (c[0] + math.sin(c[0]/20) * 30, 0.05 * (c[1]+2000) * (c[0]+ 1000))
+# lambda c: (c[0], c[1] + math.sin(c[0]) * 200) (1, 300)
+# lambda c: (c[0], c[1] + math.sin(c[0]/100) * 200) (0.1, 100)
+def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image=None, function=utils.PrintableLambda('lambda c: (c[0], c[1] + math.sin(c[0]/100) * 200)'), 
+                            dot_distance=15, background_color=255, dot_color=0, max_dotsize=15, spacing=7, timing='pre', step_size=(0.1, 10),
+                            domain:Tuple[int, int, int, int]=None, # if None image_boundaries are used
+                            dropout=0.0, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.0) -> Image.Image:
     arguments = locals().copy()
+    function = function()
     result_folder, img_path = utils.get_filepaths(result_folder, img_path)
 
     if img_path: img = Image.open(img_path)
@@ -26,28 +34,44 @@ def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image
 
     white = 255
     centered = max_dotsize // 2
+    if not domain: domain = [0, grayscale_img.shape[0], 0, grayscale_img.shape[1]]
+    if len(domain) != 4: raise ValueError('invalid domain boundaries, correct format: [x_lower, x_upper, y_lower, y_upper]')
 
-    for x in tqdm(range(0, grayscale_img.shape[0], 1)):
+    last_coordinates2 = (-1, -1)
+    for x in tqdm(np.arange(domain[0], domain[1], step_size[0])):
+        x_transformed, _ = function((x, 0))
+        if utils.euclidean_distance((x_transformed, 0), last_coordinates2) <= dot_distance: continue # without producing lines
+
+        last_coordinates2 = (x_transformed, 0)
         last_coordinates = (-1, -1)
 
-        for y in range(0, grayscale_img.shape[1], 1):
+        for y in np.arange(domain[2], domain[3], step_size[1]):
 
-            x_transformed, y_transformed = function((x, y))
+            if timing == 'pre': x_transformed, y_transformed = function((x, y))
+            else: x_transformed, y_transformed = x, y
+
+            d = utils.euclidean_distance((x_transformed, y_transformed), last_coordinates)
+
             x_transformed, y_transformed = int(x_transformed), int(y_transformed)
-            if x_transformed >= grayscale_img.shape[0] or y_transformed >= grayscale_img.shape[1]: continue
-            if utils.euclidean_distance((x_transformed, y_transformed), last_coordinates) < dot_distance: continue
-            last_coordinates = (x_transformed, y_transformed)
+            if not(0 <= x_transformed < grayscale_img.shape[0]) or not(0 <= y_transformed < grayscale_img.shape[1]): continue
+            if d <= dot_distance: continue
 
             x_ = min(x_transformed + max_dotsize, grayscale_img.shape[0])
             y_ = min(y_transformed + max_dotsize, grayscale_img.shape[1])
             avg = np.mean(grayscale_img[x_transformed:x_, y_transformed:y_], (0, 1))
 
-            radius = max(centered - round(avg / white * centered) - spacing, 0)
+            radius = max(centered - int(avg / white * centered) - spacing, 0)
+
+            if utils.dropout(d, math.inf, avg, dropout, dropout_type, max_dotsize): continue
+            last_coordinates = (x_transformed, y_transformed)
         
             if dot_color: color = dot_color
             else: color = np.append(img[min(x_transformed + centered, img.shape[0]-1), min(y_transformed + centered, img.shape[1]-1)], 255).tolist()
 
             if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
+            if timing == 'post': x_transformed, y_transformed = function((x, y))
+            if not(0 <= x_transformed < grayscale_img.shape[0]) or not(0 <= y_transformed < grayscale_img.shape[1]): continue
 
             cv2.circle(dotted_img, (y_transformed + centered, x_transformed + centered), radius, color, -1)
 
@@ -296,8 +320,7 @@ if __name__ == '__main__':
     #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
     #gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.3)
-    custom_function_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL)
-
-    #utils.get_metadata('results/contrast_result_77.png')
+    custom_function_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, dot_distance=20, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, domain=[0, 6048, -1000, 5000])
+    #utils.get_metadata('results/contrast_result_168.png')
 
     print('Dot image successfully created!')
