@@ -13,6 +13,7 @@ import os
 from datetime import datetime
 
 import cv2
+from tqdm.auto import tqdm
 
 def polar_distance(radius, angle1, angle2) -> float:
     if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
@@ -95,7 +96,8 @@ def downsample(img:Image.Image, size:int) -> Image.Image:
 def get_filepaths(folder, img_path):
     if img_path and type(img_path) == str: img_path = Path(img_path)
     if type(folder) == str: folder = Path(folder)
-    if folder and not folder.is_dir(): folder.mkdir(parents=True, exist_ok=True)
+    if folder and not folder.is_dir(): 
+        folder.mkdir(parents=True, exist_ok=True)
     return folder, img_path
 
 # adds options to saved image metadata
@@ -149,24 +151,55 @@ class PrintableLambda( object ):
     def __str__( self ):
         return self.body
 
-def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=None, result_folder:Path or str='video_results', video_name:str=None, fps=25) -> None:
+# if result folder is specified: path names must have following pattern: *_{number}.* or no number containing
+def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=None, result_folder:Path or str='video_results', video_name:str='example', fps=25, max_quality=1080, file_format='png', sort_order=False) -> None:
     if type(source_folder) == str: source_folder = Path(source_folder)
     if type(result_folder) == str: result_folder = Path(result_folder)
     if not result_folder.is_dir():
         result_folder.mkdir(parents=True, exist_ok=True)
+
+    def comparison_key(path:Path):
+        name = path.stem
+        splitted = name.split('_')
+        if not re.findall('\d', name): return (name, 0)
+        return (splitted[:-1], int(splitted[-1]))
     
-    if not image_paths: image_paths = source_folder.glob('*.png')
+    if not image_paths: 
+        image_paths = sorted(source_folder.glob(f'*.{file_format}'), key=comparison_key, reverse=sort_order)
 
-    frame = cv2.imread(image_paths[0])
+    if not '.' in video_name: video_name += '.mp4'
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    video_name =str(result_folder / video_name)
+
+    frame = cv2.imread(str(image_paths[0]))
     height, width, layers = frame.shape
+    print(frame.shape)
 
-    video = cv2.VideoWriter(video_name, 0, fps, (width,height))
+    if height > max_quality or width > max_quality:
+        if height > width:
+            width = round(width * max_quality / height)
+            height = max_quality
+        else:
+            height = round(height * max_quality / width)
+            width = max_quality
 
-    for img_path in image_paths:
-        video.write(cv2.imread(img_path))
+    #print(width, height)
+    #for path in image_paths:
+    #    print(path.stem)
+
+    video = cv2.VideoWriter(video_name, fourcc, fps, (width, height))
+
+    for img_path in tqdm(image_paths):
+        img = Image.open(img_path)
+        img.thumbnail((width, height))
+        img = np.array(img, dtype=np.uint8)[:, :, :3] # rgba -> rgb
+        img = img[:,:,::-1] # rgb -> bgr
+
+        video.write(img)
 
     cv2.destroyAllWindows()
     video.release()
+    print('Video created!')
 
 
 if __name__ == '__main__':

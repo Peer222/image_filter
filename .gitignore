@@ -1,5 +1,6 @@
 .DS_Store
 results/*
+video_results/*
 *.png
 __pycache__/*
 *.jpg

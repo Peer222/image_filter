@@ -38,7 +38,7 @@ def custom_function_dot_image(result_folder=None, img_path=None, img:Image.Image
     if len(domain) != 4: raise ValueError('invalid domain boundaries, correct format: [x_lower, x_upper, y_lower, y_upper]')
 
     last_coordinates2 = (-1, -1)
-    for x in tqdm(np.arange(domain[0], domain[1], step_size[0])):
+    for x in np.arange(domain[0], domain[1], step_size[0]):
         x_transformed, _ = function((x, 0))
         if utils.euclidean_distance((x_transformed, 0), last_coordinates2) <= dot_distance: continue # without producing lines
 
