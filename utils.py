@@ -161,7 +161,7 @@ def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=No
     def comparison_key(path:Path):
         name = path.stem
         splitted = name.split('_')
-        if not re.findall('\d', name): return (name, 0)
+        if not re.findall('\d', name): return (splitted, 0)
         return (splitted[:-1], int(splitted[-1]))
     
     if not image_paths: 
