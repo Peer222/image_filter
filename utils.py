@@ -15,6 +15,9 @@ from datetime import datetime
 import cv2
 from tqdm.auto import tqdm
 
+import torchvision.transforms as transforms
+
+
 def polar_distance(radius, angle1, angle2) -> float:
     if angle2 < 0 or angle1 == angle2: return math.inf #prevent false positives
     radiant1, radiant2 = angle1 * math.pi / 180, angle2 * math.pi / 180
@@ -45,6 +48,10 @@ def dropout(d, d_first, value, dropout_p, dropout_type, max_dotsize) -> bool:
 
     threshold = np.random.geometric(p=dropout_p) - 1
     return d < threshold + avg_weighting or d_first < threshold  + avg_weighting
+
+transform = transforms.Compose([
+    transforms.PILToTensor()
+])
 
 # parses a color into RGBA-255 format
 # TODO hex colors

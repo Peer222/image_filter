@@ -8,6 +8,10 @@ import math
 import random
 from tqdm.auto import tqdm
 
+from timeit import default_timer as timer
+
+import torch
+
 import utils
 
 # lambda c: (c[0] + 20 * math.sin(c[1]), c[1] + 20 * math.cos(c[0]))
@@ -209,13 +213,37 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
     if img_path: img = Image.open(img_path)
 
     grayscale_img = img.convert('L')
-    img, grayscale_img = np.array(img), np.array(grayscale_img)
+    
+    img = np.array(img, dtype=np.uint8) #np.array(grayscale_img, dtype=np.uint8)
+    grayscale_img = utils.transform(grayscale_img).to(torch.float32)
+    grayscale_img.requires_grad = False
+    #grayscale_img = np.array(grayscale_img, dtype=np.uint8)
 
     background_color = utils.parse_color_format(background_color)
     dot_color = utils.parse_color_format(dot_color)
 
     dotted_img = np.full((img.shape[0], img.shape[1], 4), background_color, np.uint8)
 
+    # ~23% speedup against for-loop/np.mean combination (comment below)
+    #https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+    convolution = torch.nn.Conv2d(1, 1, max_dotsize, stride=max_dotsize, padding=0, bias=False)#, padding_mode='replicate')
+    with torch.no_grad():
+        convolution.weight = torch.nn.Parameter(torch.ones_like(convolution.weight, dtype=torch.float32), requires_grad=False)
+        filtered = convolution(grayscale_img).squeeze()
+
+        for x in range(0, filtered.shape[0]):
+            for y in range(0, filtered.shape[1]):
+                
+                radius = max(centered - round(filtered[x, y].item() / max_dotsize**2 / white * centered) - spacing, 0)
+        
+                if dot_color: color = dot_color
+                else: color = np.append(img[min(x + centered, img.shape[0]-1), min(y + centered, img.shape[1]-1)], 255).tolist()
+
+                if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
+
+                cv2.circle(dotted_img, (y * max_dotsize + centered, x * max_dotsize + centered), radius, color, -1)
+
+    """
     for x in range(0, grayscale_img.shape[0], max_dotsize):
 
         for y in range(0, grayscale_img.shape[1], max_dotsize):
@@ -232,7 +260,7 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
             if random_dot_color > 0: color = utils.get_random_color(dot_color, spread=random_dot_color)
 
             cv2.circle(dotted_img, (y + centered, x + centered), radius, color, -1)
-
+    """
     return utils.save_image(result_folder, dotted_img, img_path, arguments)
 
 # prob around 0.00001
@@ -249,7 +277,8 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
     img.thumbnail(new_size)
 
     grayscale_img = img.convert('L')
-    img, grayscale_img = np.array(img), np.array(grayscale_img)
+    img = np.array(img)
+    grayscale_img = np.array(grayscale_img)
 
     background_color = utils.parse_color_format(background_color)
     dot_color = utils.parse_color_format(dot_color)
@@ -260,6 +289,7 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
 
     window_size = 2
 
+    # no significant speedup with torch convolution
     for x in range(0, grayscale_img.shape[0]):
         for y in range(0, grayscale_img.shape[1]):
 
@@ -268,13 +298,14 @@ def random_dot_image(result_folder=None, img_path=None, img:Image.Image=None, pr
             value = np.sum(grayscale_img[x:x_, y:y_], (0, 1))
 
             values.append([x, y, value])
-            
+
     values.sort(key=lambda v: v[2]) # sort by value
 
     num_dots = int( num_dots * img.shape[0] * img.shape[1] ) * 5
     i = 0
     while i < num_dots:
         pos = np.random.geometric(prob) - 1
+
         if pos >= len(values): continue
 
         x, y, _ = values[pos]
@@ -317,10 +348,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing)
-    #random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
+    random_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color)
 
     #gap_aware_polar_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, random_dot_color=0.3)
-    custom_function_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, dot_distance=20, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, domain=[0, 6048, -1000, 5000])
+    #custom_function_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, max_dotsize=args.dot_size, dot_distance=20, spacing=args.dot_spacing, dropout=0.99, dropout_type=utils.DropoutType.NORMAL, domain=[0, 6048, -1000, 5000])
     #utils.get_metadata('results/contrast_result_168.png')
 
     print('Dot image successfully created!')
