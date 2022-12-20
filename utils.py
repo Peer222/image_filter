@@ -159,7 +159,7 @@ class PrintableLambda( object ):
         return self.body
 
 # if result folder is specified: path names must have following pattern: *_{number}.* or no number containing
-def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=None, result_folder:Path or str='video_results', video_name:str='example', fps=25, max_quality=1080, file_format='png', sort_order=False) -> None:
+def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=None, images:List[Image.Image]=None, result_folder:Path or str='video_results', video_name:str='example', fps=25, max_quality=1080, file_format='png', sort_order=False) -> None:
     if type(source_folder) == str: source_folder = Path(source_folder)
     if type(result_folder) == str: result_folder = Path(result_folder)
     if not result_folder.is_dir():
@@ -171,16 +171,21 @@ def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=No
         if not re.findall('\d', name): return (splitted, 0)
         return (splitted[:-1], int(splitted[-1]))
     
-    if not image_paths: 
+    if not image_paths and source_folder: 
         image_paths = sorted(source_folder.glob(f'*.{file_format}'), key=comparison_key, reverse=sort_order)
 
     if not '.' in video_name: video_name += '.mp4'
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     video_name =str(result_folder / video_name)
 
-    frame = cv2.imread(str(image_paths[0]))
-    height, width, layers = frame.shape
-    print(frame.shape)
+    if image_paths:
+        frame = Image.open(image_paths[0])
+        length = len(image_paths)
+    else: 
+        frame = images[0]
+        length = len(images)
+
+    width, height = frame.size
 
     if height > max_quality or width > max_quality:
         if height > width:
@@ -190,14 +195,11 @@ def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=No
             height = round(height * max_quality / width)
             width = max_quality
 
-    #print(width, height)
-    #for path in image_paths:
-    #    print(path.stem)
-
     video = cv2.VideoWriter(video_name, fourcc, fps, (width, height))
 
-    for img_path in tqdm(image_paths):
-        img = Image.open(img_path)
+    for i in tqdm(range(length)):
+        if image_paths: img = Image.open(image_paths[i])
+        else: img = images[i]
         img.thumbnail((width, height))
         img = np.array(img, dtype=np.uint8)[:, :, :3] # rgba -> rgb
         img = img[:,:,::-1] # rgb -> bgr
