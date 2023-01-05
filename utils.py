@@ -11,6 +11,7 @@ import random
 import inspect
 import os
 from datetime import datetime
+import argparse
 
 import cv2
 from tqdm.auto import tqdm
@@ -212,4 +213,11 @@ def build_video(source_folder:Path or str=None, image_paths:List[Path or str]=No
 
 
 if __name__ == '__main__':
-    pass
+    parser = argparse.ArgumentParser(description="Get image metadata")
+
+    parser.add_argument("--folder", default=Path("results/"), type=Path)
+    parser.add_argument("--filename", type=Path)
+
+    args = parser.parse_args()
+
+    get_metadata(args.folder / args.filename)
