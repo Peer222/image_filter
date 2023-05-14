@@ -218,6 +218,7 @@ def raster_dot_image(result_folder=None, img_path=None, img:Image.Image=None, ba
     grayscale_img = utils.transform(grayscale_img).to(torch.float32)
     grayscale_img.requires_grad = False
     #grayscale_img = np.array(grayscale_img, dtype=np.uint8)
+    print(grayscale_img)
 
     background_color = utils.parse_color_format(background_color)
     dot_color = utils.parse_color_format(dot_color)
@@ -357,7 +358,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--dot_size', type=int, default=-1, help='maximum dot size in pixel, default = 15/1 depending on method')
     parser.add_argument('-r', '--random_dot_color', type=float, default=0.0)
 
-    parser.add_argument('--spacing', type=int, default=7, help='Reduces the dot size without reducing the dot-calculation window')
+    parser.add_argument('--spacing', type=int, default=3, help='Reduces the dot size without reducing the dot-calculation window')
 
     parser.add_argument('--dropout', type=float, default=0.0, help='~Probability~ of unpainted dots')
     parser.add_argument('--dropout_type', type=int, default=utils.DropoutType.NORMAL, choices=[utils.DropoutType.NORMAL, utils.DropoutType.BRIGHTNESS], help="Effects dropout probability")
@@ -377,22 +378,22 @@ if __name__ == '__main__':
 
     # (reversed)_random_dot_image
     if 'random' in args.method:
-        if args.dot_size < 0: args.dotsize = 1
+        if args.dot_size < 0: args.dot_size = 1
         eval(args.method)(args.result_folder, args.img_path, None, background_color=args.background_color, dot_color=args.dot_color, dot_size=args.dot_size, random_dot_color=args.random_dot_color, num_dots=args.num_dots, prob=args.prob)
     
     # custom function
     if 'custom' in args.method:
-        if args.dot_size < 0: args.dotsize = 15
+        if args.dot_size < 0: args.dot_size = 15
         eval(args.method)(args.result_folder, args.img_path, None, background_color=args.background_color, dot_color=args.dot_color, dot_size=args.dot_size, random_dot_color=args.random_dot_color, spacing=args.spacing, dropout=args.dropout, dropout_type=args.dropout_type, domain=args.domain, function=utils.PrintableLambda(args.function), step_size=args.step_size, dot_distance=args.dot_distance)
 
     # (gap_aware)_polar_dot_image
     if 'polar' in args.method:
-        if args.dot_size < 0: args.dotsize = 15
+        if args.dot_size < 0: args.dot_size = 15
         eval(args.method)(args.result_folder, args.img_path, None, background_color=args.background_color, dot_color=args.dot_color, dot_size=args.dot_size, random_dot_color=args.random_dot_color, spacing=args.spacing, dropout=args.dropout, dropout_type=args.dropout_type, center=args.center)
 
     # raster_dot_image
     if 'raster' in args.method:
-        if args.dot_size < 0: args.dotsize = 15
+        if args.dot_size < 0: args.dot_size = 15
         eval(args.method)(args.result_folder, args.img_path, None, background_color=args.background_color, dot_color=args.dot_color, dot_size=args.dot_size, random_dot_color=args.random_dot_color, spacing=args.spacing)
 
     #raster_dot_image(result_folder=Path('results'), img_path=args.image, background_color=args.background, dot_color=args.dot_color, dot_size=args.dot_size, spacing=args.dot_spacing)
